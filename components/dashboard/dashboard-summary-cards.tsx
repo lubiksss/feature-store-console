@@ -2,6 +2,13 @@ import { PARTITION_STATUS_OPTIONS } from "@/lib/catalog-enums"
 import { ActivityIcon, BoxesIcon, ListIcon } from "lucide-react"
 import { buildGrafanaPanelUrl, GRAFANA_PANELS } from "@/lib/grafana"
 import {
+  DistributionBars,
+  OutcomeBars,
+  ScoreGauge,
+  TrendChart,
+  VizRoot,
+} from "@/components/dashboard/panel-charts"
+import {
   DashboardMetricCard,
   type DashboardMetricLinkGroup,
   type DashboardMetricLinkItem,
@@ -142,9 +149,14 @@ function partitionEventsLinkGroup(total: number, counts: number[]): DashboardMet
   }
 }
 
-function panel(title: string, src: string | undefined): DashboardMetricPanel[] | undefined {
-  if (!src) return undefined
-  return [{ title, src }]
+// 외부 대시보드가 설정돼 있으면 그 패널을, 없으면 같은 성격의 인라인 차트를 끼운다.
+// 자리를 비워 두면 카드가 사라져 대시보드가 링크 목록만 남는다.
+function panel(
+  title: string,
+  src: string | undefined,
+  chart: React.ReactNode,
+): DashboardMetricPanel[] {
+  return src ? [{ title, src }] : [{ title, chart }]
 }
 
 export function DashboardSummaryCards({
@@ -210,31 +222,97 @@ export function DashboardSummaryCards({
   const partitionLinkGroup = partitionEventsLinkGroup(partitionEventsTotal, partitionEvents.counts)
 
   return (
-    <>
-      {/* Row 1 — FeatureView lifecycle (active featureViews panel + lifecycle links). 컨텐츠 높이만큼. */}
+    <VizRoot className="contents">
+      {/* Row 1 — FeatureView lifecycle (등록 추이 + 라이프사이클 링크). 컨텐츠 높이만큼. */}
       <DashboardMetricCard
         className="shrink-0"
-        panels={panel("Active feature-views", activeSourcesSrc)}
+        panels={panel(
+          "Active feature views",
+          activeSourcesSrc,
+          <TrendChart seed={11} base={9} amp={7} points={36} label="최근 3개월 활성 피처 뷰 수 추이" />,
+        )}
         linkGroups={lifecycleLinkGroups}
       />
-      {/* Row 2 — Partition events (panel 17 + 6-item links). 컨텐츠 높이만큼. */}
+      {/* Row 2 — Partition events (성공/실패 추이 + 6개 링크). 컨텐츠 높이만큼. */}
       <DashboardMetricCard
         className="shrink-0"
-        panels={panel("Partition events", partitionEventsSrc)}
+        panels={panel(
+          "Partition events",
+          partitionEventsSrc,
+          <OutcomeBars seed={23} label="최근 14일 파티션 이벤트 성공·실패 건수" />,
+        )}
         linkGroups={[partitionLinkGroup]}
       />
-      {/* Row 3 — 2일뷰 패널 3개: running events, running executions, consistency score */}
+      {/* Row 3 — 최근 7일 실행 상태 */}
       <div className="grid shrink-0 gap-4 lg:grid-cols-3">
-        <DashboardMetricCard panels={panel("Running events", runningEventsSrc)} />
-        <DashboardMetricCard panels={panel("Running executions", runningExecutionsSrc)} />
-        <DashboardMetricCard panels={panel("Consistency score", consistencyScoreSrc)} />
+        <DashboardMetricCard
+          panels={panel(
+            "Running events",
+            runningEventsSrc,
+            <TrendChart seed={41} base={4} amp={6} points={28} label="최근 7일 진행 중 이벤트 수" />,
+          )}
+        />
+        <DashboardMetricCard
+          panels={panel(
+            "Running executions",
+            runningExecutionsSrc,
+            <TrendChart seed={57} base={6} amp={9} points={28} label="최근 7일 진행 중 실행 수" />,
+          )}
+        />
+        <DashboardMetricCard
+          panels={panel(
+            "Consistency score",
+            consistencyScoreSrc,
+            <ScoreGauge value={0.988} label="정합성 점수" />,
+          )}
+        />
       </div>
-      {/* Row 4 — update interval 분포 */}
+      {/* Row 4 — 갱신 주기별 분포 */}
       <div className="grid shrink-0 gap-4 lg:grid-cols-3">
-        <DashboardMetricCard panels={panel("Update interval (daily)", updateIntervalDailySrc)} />
-        <DashboardMetricCard panels={panel("Update interval (hourly)", updateIntervalHourlySrc)} />
-        <DashboardMetricCard panels={panel("Update interval (other)", updateIntervalOtherSrc)} />
+        <DashboardMetricCard
+          panels={panel(
+            "Update interval (daily)",
+            updateIntervalDailySrc,
+            <DistributionBars
+              label="일 단위 갱신 피처 뷰 분포"
+              items={[
+                { name: "purchase_count_7d", value: 24 },
+                { name: "category_affinity", value: 18 },
+                { name: "ctr_7d", value: 12 },
+                { name: "ltv_score", value: 7 },
+              ]}
+            />,
+          )}
+        />
+        <DashboardMetricCard
+          panels={panel(
+            "Update interval (hourly)",
+            updateIntervalHourlySrc,
+            <DistributionBars
+              label="시간 단위 갱신 피처 뷰 분포"
+              items={[
+                { name: "click_count_1d", value: 31 },
+                { name: "fraud_score", value: 19 },
+                { name: "popularity_1h", value: 9 },
+              ]}
+            />,
+          )}
+        />
+        <DashboardMetricCard
+          panels={panel(
+            "Update interval (other)",
+            updateIntervalOtherSrc,
+            <DistributionBars
+              label="그 외 주기 피처 뷰 분포"
+              items={[
+                { name: "recent_click_items", value: 22 },
+                { name: "session_view_items", value: 14 },
+                { name: "recent_query_keywords", value: 6 },
+              ]}
+            />,
+          )}
+        />
       </div>
-    </>
+    </VizRoot>
   )
 }

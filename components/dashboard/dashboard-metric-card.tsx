@@ -38,7 +38,10 @@ export interface DashboardMetricLinkGroup {
 
 export interface DashboardMetricPanel {
   title: string
-  src: string
+  /** 외부 대시보드 패널을 끼울 때 */
+  src?: string
+  /** 인라인 차트를 그릴 때. src 와 함께 주지 않는다 */
+  chart?: React.ReactNode
 }
 
 interface Props {
@@ -120,17 +123,24 @@ export function DashboardMetricCard({ panels, linkGroups, className }: Props) {
         )}
         {hasPanels && (
           <div className={cn("grid min-w-0 gap-4", visiblePanels.length > 1 && "lg:grid-cols-2")}>
-            {visiblePanels.map((visiblePanel) => (
-              <GrafanaPanel
-                key={visiblePanel.title}
-                title={visiblePanel.title}
-                src={visiblePanel.src}
-                className={cn(
-                  visiblePanels.length > 1 && "lg:h-full",
-                  hasLinkGroups && "h-full min-h-0 lg:h-full lg:min-h-0",
-                )}
-              />
-            ))}
+            {visiblePanels.map((visiblePanel) =>
+              visiblePanel.src ? (
+                <GrafanaPanel
+                  key={visiblePanel.title}
+                  title={visiblePanel.title}
+                  src={visiblePanel.src}
+                  className={cn(
+                    visiblePanels.length > 1 && "lg:h-full",
+                    hasLinkGroups && "h-full min-h-0 lg:h-full lg:min-h-0",
+                  )}
+                />
+              ) : (
+                <figure key={visiblePanel.title} className="min-w-0">
+                  <figcaption className="mb-2 text-sm font-medium">{visiblePanel.title}</figcaption>
+                  {visiblePanel.chart}
+                </figure>
+              ),
+            )}
           </div>
         )}
       </CardContent>
