@@ -1,0 +1,19 @@
+{
+  // Storybook story 전용 타입체크. 메인 tsconfig는 stories를 exclude하므로(빌드 비대상),
+  // story가 실제 컴포넌트 prop과 어긋나도 `tsc --noEmit`이 못 잡는다.
+  // 이 설정으로 story를 별도 타입체크해 재발(prop 변경 → story 방치)을 막는다.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "incremental": false,
+    "plugins": []
+  },
+  // types/ 를 함께 넣는다: 정적 이미지 import 의 모듈 선언이 거기 있고, next-env.d.ts 는
+  // gitignore 대상이라 CI 의 이 시점에는 없다(빌드가 아직 안 돌았다).
+  "include": [
+    "next-env.d.ts",
+    "types/**/*.d.ts",
+    "components/**/*.stories.tsx",
+    "components/**/*.tsx"
+  ],
+  "exclude": ["node_modules"]
+}
